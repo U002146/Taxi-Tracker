@@ -63,9 +63,7 @@
         <button onclick="closeConsole()" class="text-gray-400 underline mt-4">關閉控制台 (背景執行)</button>
     </div>
 
-    <div id="secret-entry" class="fixed bottom-24 right-2 text-[10px] text-gray-400/50 select-none z-40">
-        Taxi Tracker v1.5
-    </div>
+
 
     <script>
         // ========= CONFIG 設定區 =========
@@ -206,19 +204,31 @@
             }, 5000); // 5秒更新一次
         }
 
-        // ========= 司機端邏輯 =========
+        // ========= 司機端邏輯 (更新版) =========
 
-        // 隱藏入口點擊偵測
-        document.getElementById('secret-entry').addEventListener('click', () => {
+        // 修改觸發機制：改為點擊「左上角大頭貼」
+        // 為了讓點擊更順手，我們也加在 user-avatar 上
+        document.getElementById('user-avatar').addEventListener('click', handleSecretTrigger);
+        // 備用：如果頭像沒載入，點擊歡迎文字也可以
+        document.getElementById('welcome-text').addEventListener('click', handleSecretTrigger);
+
+        function handleSecretTrigger() {
             clickCount++;
+            console.log("Debug: Clicked " + clickCount); // 方便除錯
+            
             if (clickCount >= 5) {
+                // 為了避免誤觸，重置計數器延遲一點
                 const pwd = prompt("請輸入司機密碼:");
-                if (pwd === "400788") { // 簡單密碼保護
+                if (pwd === "400788") { 
                     document.getElementById('driver-console').style.display = 'flex';
                 }
                 clickCount = 0;
             }
-        });
+            
+            // 如果 2 秒內沒繼續點，計數歸零 (防止乘客亂點累積)
+            if (window.clickTimer) clearTimeout(window.clickTimer);
+            window.clickTimer = setTimeout(() => { clickCount = 0; }, 2000);
+        }
 
         function closeConsole() {
             document.getElementById('driver-console').style.display = 'none';
