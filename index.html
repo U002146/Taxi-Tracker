@@ -243,40 +243,61 @@
 
         let lastLat = 0, lastLng = 0, lastHeading = 0, lastSpeed = 0;
 
+        // 定義一個全域變數來管理計時器
+        let uploadTimer = null; 
+
         function toggleSharing() {
             const btn = document.getElementById('toggle-share-btn');
+            
             if (!isSharing) {
-                // 開始分享
+                // ====== [開始分享] ======
                 if (navigator.geolocation) {
+                    // 1. 啟動 GPS 監聽 (只負責更新本地變數，不負責上傳)
                     watchId = navigator.geolocation.watchPosition(
                         (position) => {
+                            // 只更新變數，不呼叫 uploadLocation
                             const { latitude, longitude, heading, speed } = position.coords;
                             lastLat = latitude;
                             lastLng = longitude;
                             lastHeading = heading || 0;
                             lastSpeed = speed || 0;
                             
+                            // 顯示精度給司機看
                             document.getElementById('gps-accuracy').innerText = Math.round(position.coords.accuracy);
-                            
-                            // 上傳至 GAS
-                            uploadLocation(latitude, longitude, heading, speed);
                         },
                         (err) => alert("GPS 錯誤: " + err.message),
                         { enableHighAccuracy: true, maximumAge: 0 }
                     );
+
+                    // 2. 啟動定時上傳器 (每 10 秒執行一次)
+                    uploadTimer = setInterval(() => {
+                        // 確保有抓到座標才上傳 (避免初始 0,0)
+                        if (lastLat !== 0 && lastLng !== 0) {
+                            uploadLocation(lastLat, lastLng, lastHeading, lastSpeed);
+                            console.log("已執行 10秒 定時上傳");
+                            
+                            // 更新控制台狀態文字讓你知道有在動
+                            const time = new Date().toLocaleTimeString();
+                            document.getElementById('console-status').innerText = `上傳中 (${time})`;
+                        }
+                    }, 10000); // 🔴 關鍵修改：10000 毫秒 = 10 秒
+
                     isSharing = true;
                     btn.innerText = "停止分享";
                     btn.classList.replace("bg-blue-600", "bg-gray-600");
-                    document.getElementById('console-status').innerText = "正在上傳 GPS...";
+                    document.getElementById('console-status').innerText = "等待 10秒 上傳週期...";
                 }
             } else {
-                // 停止分享
-                navigator.geolocation.clearWatch(watchId);
+                // ====== [停止分享] ======
+                navigator.geolocation.clearWatch(watchId); // 停止 GPS 監聽
+                clearInterval(uploadTimer); // 🔴 停止 10秒 計時器
+                
                 isSharing = false;
                 btn.innerText = "開始分享位置";
                 btn.classList.replace("bg-gray-600", "bg-blue-600");
                 document.getElementById('console-status').innerText = "已停止";
-                // 上傳離線狀態
+                
+                // 最後上傳一次離線狀態
                 setDriverStatus('offline'); 
             }
         }
